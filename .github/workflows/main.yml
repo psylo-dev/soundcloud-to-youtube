@@ -1,0 +1,80 @@
+name: SoundCloud to YouTube
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'latest'
+
+      # 3. Install Chrome
+      - name: Install Chrome
+        run: |
+          DIRECTORY=${HOME}/soundcloud-to-youtube/.google-chrome
+          FILE=google-chrome.deb
+          FILE_PATH=$DIRECTORY/$FILE
+          
+          mkdir -p $DIRECTORY
+          
+          if [ ! -e $FILE_PATH ]; then
+            curl -L -o $FILE https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            mv $FILE $DIRECTORY
+          fi
+          
+          sudo dpkg -i $FILE_PATH
+          echo "Using chrome $(google-chrome --version)"
+
+      # 4. Install missing Debian OS dependencies
+      - name: Install missing Debian OS dependencies
+        run: sudo apt-get -f install
+
+      # 5. Install ffmpeg
+      - name: Install ffmpeg
+        run: |
+          sudo sh -c 'echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list'
+          sudo apt update
+          sudo apt install -y ffmpeg
+
+      # 6. Restore npm cache
+      - name: Restore npm cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ./node_modules
+          key: ${{ runner.os }}-npm-cache-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-cache-
+
+      # 7. Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 8. Save npm cache
+      - name: Save npm cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ./node_modules
+          key: ${{ runner.os }}-npm-cache-${{ hashFiles('package-lock.json') }}
+
+      # 9. Run the main script
+      - name: Run main script
+        run: npm start
